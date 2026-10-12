@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>استوديو توليد الحوار الصوتي البشري | ElevenLabs AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(19, 26, 38, 0.94);
+      --card-border: #2d3748;
+      --accent: #f59e0b;
+      --accent-light: #fbbf24;
+      --accent-cyan: #38bdf8;
+      --accent-green: #10b981;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at 85% 10%, #1e293b 0%, #090d16 65%);
+      color: var(--text);
+      font-family: 'Tajawal', Tahoma, sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 25px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 20px;
+    }
+    .badge {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent-light);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .header-titles h1 {
+      font-family: 'Cairo', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+    }
+    .header-titles p {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    /* Hero Player */
+    .hero-player {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.98) 100%);
+      border: 1px solid #475569;
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 25px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+      position: relative;
+    }
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .hero-title {
+      font-family: 'Cairo', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .meta-tag {
+      font-size: 12px;
+      background: #334155;
+      padding: 4px 10px;
+      border-radius: 12px;
+      color: #cbd5e1;
+    }
+    audio {
+      width: 100%;
+      height: 48px;
+      border-radius: 30px;
+      outline: none;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+    }
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #0d1117;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .download-btn:hover {
+      background: var(--accent-light);
+      transform: translateY(-2px);
+    }
+
+    /* Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1.35fr 0.95fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .card-title {
+      font-family: 'Cairo', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 460px;
+      background: #090d16;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      color: var(--text);
+      padding: 16px;
+      font-family: inherit;
+      font-size: 14.5px;
+      line-height: 1.9;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    button {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-weight: 800;
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    button:hover:not(:disabled) {
+      background: var(--accent-light);
+      transform: translateY(-1px);
+    }
+    button.secondary {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+    }
+    button.secondary:hover:not(:disabled) {
+      background: #334155;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .characters-grid {
+      display: grid;
+      gap: 10px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-left: 5px;
+    }
+    .character-item {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .char-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .char-name {
+      font-weight: 700;
+      font-size: 14.5px;
+      color: #f1f5f9;
+    }
+    select {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+    }
+
+    /* Progress and status */
+    .status-box {
+      margin-top: 15px;
+      padding: 12px 16px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      font-size: 13.5px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f59e0b;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-titles">
+        <span class="badge">ElevenLabs Multilingual V2 · واقعية بشرية 100%</span>
+        <h1 style="margin-top: 8px;">استوديو توليد الحوار والسيناريو الصوتي</h1>
+        <p>ألصق أي نص أو سيناريو، واختر الصوت البشري المناسب لكل متحدث، واضغط زر التوليد لإنتاج ملف صوتي واقعي مباشر.</p>
+      </div>
+      <div>
+        <a id="downloadMasterBtn" href="/static/elevenlabs_yemeni_session.mp3" download class="download-btn">
+          ⬇ تحميل الملف الصوتي الحالي (MP3)
+        </a>
+      </div>
+    </header>
+
+    <!-- Master Audio Hero Box -->
+    <section class="hero-player">
+      <div class="hero-top">
+        <div class="hero-title">
+          <span>☕</span>
+          <span id="playerSessionTitle">جلسة يمنية على الرصيف: «يا جماعة، ذي هدنة ولا كلام إعلام؟»</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <span class="meta-tag" id="playerDuration">المدة: 14:46 دقيقة</span>
+          <span class="meta-tag" style="color: var(--accent-green); border-color: var(--accent-green);">جودة استوديو ElevenLabs</span>
+        </div>
+      </div>
+      <audio id="mainAudio" controls preload="metadata">
+        <source id="audioSource" src="/static/elevenlabs_yemeni_session.mp3" type="audio/mp3">
+        <source src="elevenlabs_yemeni_session.mp3" type="audio/mp3">
+      </audio>
+    </section>
+
+    <!-- Main Workspace -->
+    <div class="grid">
+      <!-- Editor Column -->
+      <section class="card">
+        <div class="card-title">
+          <span>نص السيناريو والحوار</span>
+          <span style="font-size: 12px; color: var(--muted);" id="detectedCount">الشخصيات تكتشف تلقائيًا</span>
+        </div>
+        <p class="hint">اكتب الحوار بهذا الشكل: <b>الاسم:</b> النص المنطوق. ويمكنك ترك فواصل المشاهد (مثل: المشهد الأول...) كما هي.</p>
+        <textarea id="scriptInput" placeholder="ألصق السيناريو أو الحوار هنا..."></textarea>
+        
+        <div class="btn-row">
+          <button id="btnGenerate" style="background: #10b981; color: #fff;">
+            ⚡ توليد الملف الصوتي الآن (ElevenLabs)
+          </button>
+          <button id="btnLoadSample" class="secondary">استعادة نص الجلسة اليمنية</button>
+        </div>
+        
+        <div class="status-box">
+          <div class="spinner" id="spinner"></div>
+      <span id="statusMessage">جاهز لتوليد الحوار بأصوات ElevenLabs مع الضحك ضمن أداء كل متحدث.</span>
+        </div>
+      </section>
+
+      <!-- Characters & Voice Allocation -->
+      <aside class="card">
+        <div class="card-title">
+          <span>تخصيص الأصوات البشرية</span>
+          <button id="btnRefreshVoices" class="secondary" style="padding: 4px 10px; font-size: 11px;">تحديث الأصوات</button>
+        </div>
+        <p class="hint">اختر من مكتبة أصوات حسابك في ElevenLabs الصوت المناسب لكل شخصية مكتشفة في النص.</p>
+
+        <div class="characters-grid" id="charactersList">
+          <div class="hint">اكتب أو ألصق نصاً للتعرف على الشخصيات وتخصيص أصواتها...</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const el = id => document.getElementById(id);
+    let availableVoices = [
+      { id: "pNGUEZc2WLum9bjP611g", name: "Ziyad - Natural Arabic (صوت وقور ورزين)" },
+      { id: "rpGHcNQJvO8dFNNFNj1v", name: "Fahad - Saudi, Warm & Confident (هادئ وواثق)" },
+      { id: "KfYUTAF49N2CPU3iKuMi", name: "Abdulrahman - Energetic (سريع وحماسي)" },
+      { id: "FyTdvEJCoWuIYfS3P1x0", name: "ABDULLAH ALMUDAWI (جدي وحاسم)" },
+      { id: "Rc0jb4oaYXOM4EVr0Jij", name: "Mamdooh Fg (مرح وخفيف دم)" },
+      { id: "pNInz6obpgDQGcFmaJgB", name: "Adam - Deep Male" },
+      { id: "JBFqnCBsd6RMkjVDRZzb", name: "George - Warm Storyteller" }
+    ];
+
+    const defaultAssignments = {
+      "أبو صقر": "pNGUEZc2WLum9bjP611g",
+      "سالم": "rpGHcNQJvO8dFNNFNj1v",
+      "مروان": "KfYUTAF49N2CPU3iKuMi",
+      "نبيل": "FyTdvEJCoWuIYfS3P1x0",
+      "فتحي": "Rc0jb4oaYXOM4EVr0Jij",
+      "الجميع": "pNGUEZc2WLum9bjP611g"
+    };
+
+    let detectedSpeakers = [];
+
+    async function fetchVoices() {
+      try {
+        const res = await fetch('/api/voices');
+        if (res.ok) {
+          const list = await res.json();
+          if (list.length > 0) availableVoices = list;
+          renderSpeakers();
+        }
+      } catch (e) {
+        console.log('Voices loaded from cache');
+      }
+    }
+
+    function extractSpeakers() {
+      const text = el('scriptInput').value;
+      const lines = text.split('\n');
+      const set = new Set();
+      lines.forEach(l => {
+        const m = l.match(/^([^:：]{1,30})[:：]/);
+        if (m) {
+          const name = m[1].trim();
+          if (!name.startsWith('المشهد') && !name.startsWith('الشخصيات') && !name.startsWith('ملاحظة')) {
+            set.add(name);
+          }
+        }
+      });
+      detectedSpeakers = Array.from(set);
+      el('detectedCount').textContent = `تم اكتشاف ${detectedSpeakers.length} متحدثين`;
+      renderSpeakers();
+    }
+
+    function renderSpeakers() {
+      const container = el('charactersList');
+      if (detectedSpeakers.length === 0) {
+        container.innerHTML = '<div class="hint">لم يتم اكتشاف متحدثين بعد، اكتب (اسم: الكلام)...</div>';
+        return;
+      }
+      container.innerHTML = '';
+      detectedSpeakers.forEach((spk, idx) => {
+        const item = document.createElement('div');
+        item.className = 'character-item';
+        
+        let assigned = defaultAssignments[spk] || availableVoices[idx % availableVoices.length]?.id;
+
+        item.innerHTML = `
+          <div class="char-header">
+            <span class="char-name">👤 ${spk}</span>
+          </div>
+          <select data-speaker="${spk}">
+            ${availableVoices.map(v => `<option value="${v.id}" ${v.id === assigned ? 'selected' : ''}>${v.name}</option>`).join('')}
+          </select>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // Generate Audio Request
+    el('btnGenerate').onclick = async () => {
+      const text = el('scriptInput').value.trim();
+      if (!text) {
+        alert('يرجى إدخال نص الحوار أو السيناريو أولاً.');
+        return;
+      }
+
+      // Collect voice mapping
+      const mapping = {};
+      document.querySelectorAll('#charactersList select').forEach(sel => {
+        mapping[sel.dataset.speaker] = sel.value;
+      });
+
+      // UI state
+      el('btnGenerate').disabled = true;
+      el('spinner').style.display = 'inline-block';
+      el('statusMessage').textContent = 'جاري توليد الحوار والضحك ضمن صوت كل متحدث عبر ElevenLabs... قد يستغرق وقتاً أطول للنصوص الطويلة.';
+
+      try {
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: text,
+            voiceMapping: mapping
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || 'حدث خطأ أثناء التوليد');
+        }
+
+        // Success
+        el('statusMessage').textContent = `تم توليد الملف بنجاح! تم تركيب ${data.segmentsCount} مقطعاً صوتياً.`;
+        el('playerSessionTitle').textContent = 'الملف الصوتي المُولّد حديثاً';
+        el('playerDuration').textContent = 'جاهز للاستماع والتحميل';
+        
+        // Update player
+        const audio = el('mainAudio');
+        audio.src = data.audioUrl;
+        audio.load();
+        audio.play();
+
+        el('downloadMasterBtn').href = data.audioUrl;
+        el('downloadMasterBtn').download = data.filename;
+      } catch (err) {
+        el('statusMessage').textContent = 'خطأ: ' + err.message;
+        alert('خطأ: ' + err.message);
+      } finally {
+        el('btnGenerate').disabled = false;
+        el('spinner').style.display = 'none';
+      }
+    };
+
+    // Load sample text
+    el('btnLoadSample').onclick = async () => {
+      try {
+        const res = await fetch('session_script.txt');
+        if (res.ok) {
+          el('scriptInput').value = await res.text();
+          extractSpeakers();
+        }
+      } catch(e) {}
+    };
+
+    el('scriptInput').oninput = extractSpeakers;
+    el('btnRefreshVoices').onclick = fetchVoices;
+
+    // Initial setup
+    fetchVoices().then(() => {
+      el('btnLoadSample').click();
+    });
+  </script>
+</body>
+</html>

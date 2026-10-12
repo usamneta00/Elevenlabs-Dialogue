@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.py[cod]
+generated_jobs/
+temp_render/
+temp_render_session/
+temp_eleven_render/
+/natural_manifest.txt
+/natural_yemeni_session.mp3
+/elevenlabs_yemeni_session.mp3
+/static/session_*.mp3
+/static/natural_yemeni_session.mp3
