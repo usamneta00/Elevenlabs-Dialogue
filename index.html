@@ -454,13 +454,19 @@
           })
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data;
+        try {
+          data = responseText ? JSON.parse(responseText) : {};
+        } catch {
+          data = { detail: responseText || 'أعاد الخادم استجابة غير مفهومة.' };
+        }
         if (!response.ok) {
           const detail = data.detail;
           const message = typeof detail === 'string'
             ? detail
             : (detail?.message || detail?.detail || 'حدث خطأ أثناء التوليد');
-          throw new Error(message);
+          throw new Error(`${message} (HTTP ${response.status})`);
         }
 
         // Success
