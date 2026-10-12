@@ -456,7 +456,11 @@
 
         const data = await response.json();
         if (!response.ok) {
-          throw new Error(data.detail || 'حدث خطأ أثناء التوليد');
+          const detail = data.detail;
+          const message = typeof detail === 'string'
+            ? detail
+            : (detail?.message || detail?.detail || 'حدث خطأ أثناء التوليد');
+          throw new Error(message);
         }
 
         // Success

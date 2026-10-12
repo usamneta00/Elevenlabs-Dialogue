@@ -87,8 +87,6 @@ def build_natural_session(items, client, voice_mapping, work_dir, output_file, m
     playlist = []
     previous_speaker = None
 
-    dialogue_items = [item for item in items if item["type"] == "dialogue"]
-    dialogue_position = 0
     for index, item in enumerate(items):
         if item["type"] == "scene":
             if playlist:
@@ -101,9 +99,6 @@ def build_natural_session(items, client, voice_mapping, work_dir, output_file, m
         speaker = item["speaker"]
         if item["text"]:
             segment_file = os.path.join(work_dir, f"seg_{index:03d}.mp3")
-            current_position = dialogue_position
-            previous_text = dialogue_items[current_position - 1]["text"] if current_position else None
-            next_text = dialogue_items[current_position + 1]["text"] if current_position + 1 < len(dialogue_items) else None
             stream = client.text_to_speech.convert(
                 voice_id=voice_mapping.get(speaker, default_voice),
                 text=item["text"],
@@ -111,8 +106,6 @@ def build_natural_session(items, client, voice_mapping, work_dir, output_file, m
                 # produced in the selected character's voice in the same take.
                 model_id="eleven_v3",
                 output_format="mp3_44100_128",
-                previous_text=previous_text,
-                next_text=next_text,
                 voice_settings={
                     "stability": 0.42,
                     "similarity_boost": 0.78,
@@ -124,7 +117,6 @@ def build_natural_session(items, client, voice_mapping, work_dir, output_file, m
                 for chunk in stream:
                     audio_file.write(chunk)
             playlist.append(segment_file)
-            dialogue_position += 1
 
         if item.get("has_laugh"):
             playlist.append(silence_laugh)

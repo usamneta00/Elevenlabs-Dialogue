@@ -128,7 +128,12 @@ def generate_dialogue(req: GenerateRequest):
             manifest_path=manifest_file,
         )
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"فشل توليد أو تجميع الصوت: {e}") from e
+        error_body = getattr(e, "body", None)
+        error_detail = error_body.get("detail") if isinstance(error_body, dict) else None
+        message = error_detail.get("message") if isinstance(error_detail, dict) else None
+        message = message or (error_detail if isinstance(error_detail, str) else None)
+        message = message or "تعذر توليد الصوت. تحقق من إعدادات ElevenLabs ثم أعد المحاولة."
+        raise HTTPException(status_code=502, detail=f"فشل توليد أو تجميع الصوت: {message}") from e
 
     return {
         "success": True,
