@@ -483,8 +483,19 @@
         el('downloadMasterBtn').href = data.audioUrl;
         el('downloadMasterBtn').download = data.filename;
       } catch (err) {
-        el('statusMessage').textContent = 'خطأ: ' + err.message;
-        alert('خطأ: ' + err.message);
+        let message = err.message;
+        if (err instanceof TypeError || message === 'Failed to fetch') {
+          try {
+            const health = await fetch('/health', { cache: 'no-store' });
+            message = health.ok
+              ? 'الخادم متاح، لكن اتصال توليد الصوت انقطع قبل وصول الرد. جرّب مقطعاً أقصر، ثم راجع سجلات Railway إذا تكرر الخطأ.'
+              : `الخادم لا يعمل بشكل سليم (فحص الصحة: HTTP ${health.status}). راجع حالة النشر وسجلات Railway.`;
+          } catch {
+            message = 'تعذّر الاتصال بخادم الموقع. تحقق من عنوان Railway وحالة النشر، ثم افتح /health للتأكد من أن الخدمة تعمل.';
+          }
+        }
+        el('statusMessage').textContent = 'خطأ: ' + message;
+        alert('خطأ: ' + message);
       } finally {
         el('btnGenerate').disabled = false;
         el('spinner').style.display = 'none';
