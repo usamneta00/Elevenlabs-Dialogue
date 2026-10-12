@@ -283,8 +283,8 @@
         <p>ألصق أي نص أو سيناريو، واختر الصوت البشري المناسب لكل متحدث، واضغط زر التوليد لإنتاج ملف صوتي واقعي مباشر.</p>
       </div>
       <div>
-        <a id="downloadMasterBtn" href="/static/elevenlabs_yemeni_session.mp3" download class="download-btn">
-          ⬇ تحميل الملف الصوتي الحالي (MP3)
+        <a id="downloadMasterBtn" class="download-btn">
+          ⬇ تحميل الملف الصوتي بعد التوليد (MP3)
         </a>
       </div>
     </header>
@@ -301,10 +301,7 @@
           <span class="meta-tag" style="color: var(--accent-green); border-color: var(--accent-green);">جودة استوديو ElevenLabs</span>
         </div>
       </div>
-      <audio id="mainAudio" controls preload="metadata">
-        <source id="audioSource" src="/static/elevenlabs_yemeni_session.mp3" type="audio/mp3">
-        <source src="elevenlabs_yemeni_session.mp3" type="audio/mp3">
-      </audio>
+      <audio id="mainAudio" controls preload="metadata"></audio>
     </section>
 
     <!-- Main Workspace -->
@@ -469,6 +466,35 @@
           throw new Error(`${message} (HTTP ${response.status})`);
         }
 
+        if (!data.jobId || !data.statusUrl) {
+          throw new Error('الخادم لم يُرجع رقم متابعة لمهمة التوليد.');
+        }
+
+        while (true) {
+          await new Promise(resolve => setTimeout(resolve, 1800));
+          const statusResponse = await fetch(data.statusUrl, { cache: 'no-store' });
+          const statusText = await statusResponse.text();
+          let job;
+          try {
+            job = statusText ? JSON.parse(statusText) : {};
+          } catch {
+            throw new Error(`تعذر قراءة حالة التوليد (HTTP ${statusResponse.status}).`);
+          }
+          if (!statusResponse.ok) {
+            throw new Error(job.detail || `تعذر الوصول إلى مهمة التوليد (HTTP ${statusResponse.status}).`);
+          }
+          if (job.status === 'failed') {
+            throw new Error(job.detail || 'فشل توليد الصوت.');
+          }
+          if (job.status === 'complete') {
+            data = job;
+            break;
+          }
+          const completed = job.completedSegments || 0;
+          const total = job.totalSegments || data.segmentsCount || 0;
+          el('statusMessage').textContent = `جاري توليد الصوت... اكتمل ${completed} من ${total} مقطعاً.`;
+        }
+
         // Success
         el('statusMessage').textContent = `تم توليد الملف بنجاح! تم تركيب ${data.segmentsCount} مقطعاً صوتياً.`;
         el('playerSessionTitle').textContent = 'الملف الصوتي المُولّد حديثاً';
@@ -505,7 +531,7 @@
     // Load sample text
     el('btnLoadSample').onclick = async () => {
       try {
-        const res = await fetch('session_script.txt');
+        const res = await fetch('/api/sample-script');
         if (res.ok) {
           el('scriptInput').value = await res.text();
           extractSpeakers();

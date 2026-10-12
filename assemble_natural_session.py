@@ -69,7 +69,7 @@ def dialogue_pause(text: str, previous_speaker: str | None, speaker: str) -> flo
     return 0.26
 
 
-def build_natural_session(items, client, voice_mapping, work_dir, output_file, manifest_path):
+def build_natural_session(items, client, voice_mapping, work_dir, output_file, manifest_path, on_progress=None):
     """Render page-provided dialogue, natural pauses, and scene cues as one file."""
     os.makedirs(work_dir, exist_ok=True)
     silence_dialogue = os.path.join(work_dir, "pause_dialogue.mp3")
@@ -94,6 +94,8 @@ def build_natural_session(items, client, voice_mapping, work_dir, output_file, m
                 if has_scenes:
                     playlist.append(scene_transition)
                 playlist.append(silence_scene)
+            if on_progress:
+                on_progress(index + 1, len(items))
             continue
 
         speaker = item["speaker"]
@@ -127,6 +129,8 @@ def build_natural_session(items, client, voice_mapping, work_dir, output_file, m
                 generate_silence(pause_duration, pause_file)
             playlist.append(pause_file)
         previous_speaker = speaker
+        if on_progress:
+            on_progress(index + 1, len(items))
 
     return assemble_playlist(playlist, output_file, manifest_path)
 

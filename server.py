@@ -1,8 +1,10 @@
 import os
 import re
 import uuid
+import logging
+import threading
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -11,6 +13,9 @@ from elevenlabs.client import ElevenLabs
 from assemble_natural_session import build_natural_session
 
 app = FastAPI(title="ElevenLabs Dialogue Studio")
+logger = logging.getLogger(__name__)
+generation_jobs = {}
+generation_jobs_lock = threading.Lock()
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,7 +104,7 @@ def parse_dialogue(raw_text: str):
     return items
 
 @app.post("/api/generate")
-def generate_dialogue(req: GenerateRequest):
+def generate_dialogue(req: GenerateRequest, background_tasks: BackgroundTasks):
     try:
         client = get_client(req.apiKey if req.apiKey.strip() else None)
     except Exception as e:
@@ -118,6 +123,44 @@ def generate_dialogue(req: GenerateRequest):
     os.makedirs("static", exist_ok=True)
 
     manifest_file = os.path.join(work_dir, "manifest.txt")
+    with generation_jobs_lock:
+        generation_jobs[job_id] = {
+            "jobId": job_id,
+            "status": "queued",
+            "completedSegments": 0,
+            "totalSegments": len(items),
+        }
+    background_tasks.add_task(
+        run_generation_job,
+        job_id,
+        req,
+        items,
+        client,
+        work_dir,
+        final_output,
+        manifest_file,
+        out_mp3_name,
+    )
+
+    return {
+        "success": True,
+        "jobId": job_id,
+        "statusUrl": f"/api/generate/{job_id}",
+        "segmentsCount": len(items),
+    }
+
+
+def run_generation_job(job_id, req, items, client, work_dir, final_output, manifest_file, out_mp3_name):
+    def update_progress(completed, total):
+        with generation_jobs_lock:
+            job = generation_jobs.get(job_id)
+            if job:
+                job["completedSegments"] = completed
+                job["totalSegments"] = total
+
+    with generation_jobs_lock:
+        generation_jobs[job_id]["status"] = "processing"
+
     try:
         build_natural_session(
             items=items,
@@ -126,21 +169,41 @@ def generate_dialogue(req: GenerateRequest):
             work_dir=work_dir,
             output_file=final_output,
             manifest_path=manifest_file,
+            on_progress=update_progress,
         )
+        with generation_jobs_lock:
+            generation_jobs[job_id].update({
+                "status": "complete",
+                "audioUrl": f"/static/{out_mp3_name}",
+                "filename": out_mp3_name,
+                "segmentsCount": len(items),
+            })
     except Exception as e:
         error_body = getattr(e, "body", None)
         error_detail = error_body.get("detail") if isinstance(error_body, dict) else None
         message = error_detail.get("message") if isinstance(error_detail, dict) else None
         message = message or (error_detail if isinstance(error_detail, str) else None)
         message = message or "تعذر توليد الصوت. تحقق من إعدادات ElevenLabs ثم أعد المحاولة."
-        raise HTTPException(status_code=502, detail=f"فشل توليد أو تجميع الصوت: {message}") from e
+        logger.exception("Audio generation job %s failed", job_id)
+        with generation_jobs_lock:
+            generation_jobs[job_id].update({"status": "failed", "detail": message})
 
-    return {
-        "success": True,
-        "audioUrl": f"/static/{out_mp3_name}",
-        "filename": out_mp3_name,
-        "segmentsCount": len(items)
-    }
+
+@app.get("/api/generate/{job_id}")
+def get_generation_status(job_id: str):
+    with generation_jobs_lock:
+        job = generation_jobs.get(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="مهمة التوليد غير موجودة أو انتهت بعد إعادة تشغيل الخدمة")
+        return dict(job)
+
+
+@app.get("/api/sample-script")
+def get_sample_script():
+    script_path = Path(__file__).with_name("session_script.txt")
+    if not script_path.exists():
+        raise HTTPException(status_code=404, detail="نص العينة غير موجود")
+    return FileResponse(script_path, media_type="text/plain; charset=utf-8")
 
 # Mount static files
 os.makedirs("static", exist_ok=True)
