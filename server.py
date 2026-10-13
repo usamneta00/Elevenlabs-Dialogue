@@ -185,8 +185,10 @@ def run_generation_job(job_id, req, items, api_key, work_dir, final_output, mani
         error_detail = error_body.get("detail") if isinstance(error_body, dict) else None
         message = error_detail.get("message") if isinstance(error_detail, dict) else None
         message = message or (error_detail if isinstance(error_detail, str) else None)
-        message = message or (str(e) if isinstance(e, (RuntimeError, ValueError)) else None)
-        message = message or "تعذر توليد الصوت. تحقق من إعدادات Fish Audio ثم أعد المحاولة."
+        # Surface the underlying provider/assembly error for every exception;
+        # otherwise the UI hides actionable Fish Audio responses behind a generic alert.
+        message = message or (str(e).strip() or None)
+        message = message or f"تعذر توليد الصوت ({type(e).__name__}). راجع سجلات الخدمة للتفاصيل."
         logger.exception("Audio generation job %s failed", job_id)
         with generation_jobs_lock:
             generation_jobs[job_id].update({"status": "failed", "detail": message})

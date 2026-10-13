@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import time
 import subprocess
 import urllib.error
 import urllib.request
@@ -66,27 +67,38 @@ def fish_tts(text: str, voice_id: str, api_key: str, out_file: str):
         "temperature": float(os.environ.get("FISH_TTS_TEMPERATURE", "0.7")),
         "top_p": float(os.environ.get("FISH_TTS_TOP_P", "0.7")),
     }).encode("utf-8")
-    request = urllib.request.Request(
-        "https://api.fish.audio/v1/tts",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "model": os.environ.get("FISH_TTS_MODEL", "s2.1-pro-free"),
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=180) as response:
-            with open(out_file, "wb") as audio_file:
-                audio_file.write(response.read())
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", errors="replace")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "model": os.environ.get("FISH_TTS_MODEL", "s2.1-pro-free"),
+    }
+    for attempt in range(3):
+        request = urllib.request.Request(
+            "https://api.fish.audio/v1/tts", data=payload,
+            headers=headers, method="POST",
+        )
         try:
-            detail = json.loads(detail).get("message", detail)
-        except (ValueError, AttributeError):
-            pass
-        raise RuntimeError(f"Fish Audio API ({error.code}): {detail}") from error
+            with urllib.request.urlopen(request, timeout=180) as response:
+                audio_data = response.read()
+            if not audio_data:
+                raise ConnectionError("Fish Audio returned an empty audio response")
+            with open(out_file, "wb") as audio_file:
+                audio_file.write(audio_data)
+            return
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace")
+            try:
+                detail = json.loads(detail).get("message", detail)
+            except (ValueError, AttributeError):
+                pass
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
+                raise RuntimeError(f"Fish Audio API ({error.code}): {detail}") from error
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as error:
+            if attempt == 2:
+                raise RuntimeError(
+                    f"انقطع الاتصال بـ Fish Audio أثناء تنزيل الصوت بعد 3 محاولات: {error}"
+                ) from error
+        time.sleep(1 + attempt)
 
 
 def dialogue_pause(text: str, previous_speaker: str | None, speaker: str) -> float:
