@@ -134,7 +134,15 @@ def build_natural_session(items, api_key, voice_mapping, work_dir, output_file, 
             voice_id = voice_mapping.get(speaker) or default_voice
             if not voice_id:
                 raise ValueError("أدخل معرف صوت Fish Audio لكل متحدث أو اضبط FISH_DEFAULT_VOICE_ID")
-            fish_tts(item["text"], voice_id, api_key, segment_file)
+            try:
+                fish_tts(item["text"], voice_id, api_key, segment_file)
+            except RuntimeError as error:
+                # Keep the provider's actionable response and identify the exact
+                # speaker/segment so stale Fish Audio references can be replaced.
+                raise RuntimeError(
+                    f"فشل توليد المقطع {index + 1} للمتحدث «{speaker}» "
+                    f"باستخدام مرجع الصوت {voice_id}: {error}"
+                ) from error
             playlist.append(segment_file)
 
         if item.get("has_laugh"):

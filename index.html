@@ -345,7 +345,7 @@
 
   <script>
     const el = id => document.getElementById(id);
-    // Curated Arabic-only Fish Audio voices across several Arab dialects.
+    // Cached voices are a fallback when the live Fish Audio library is unavailable.
     let availableVoices = [
       { id: "17f2143d748a4d368cb8a7e624cb1506", name: "يمني محكي — حيوي ومعبر", region: "yemen" },
       { id: "06645dd394b3405fa33c07a818f40e57", name: "خليجي — هادئ ورزين", region: "gulf" },
@@ -377,7 +377,14 @@
         const res = await fetch('/api/voices');
         if (res.ok) {
           const list = await res.json();
-          if (list.length > 0) availableVoices = list;
+          if (list.length > 0) {
+            availableVoices = list;
+            Object.keys(characterVoices).forEach(name => {
+              if (!availableVoices.some(voice => voice.id === characterVoices[name])) {
+                delete characterVoices[name];
+              }
+            });
+          }
           renderSpeakers();
         }
       } catch (e) {
