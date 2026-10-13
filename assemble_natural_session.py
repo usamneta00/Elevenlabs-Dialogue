@@ -62,6 +62,9 @@ def fish_tts(text: str, voice_id: str, api_key: str, out_file: str):
         "format": "mp3",
         "sample_rate": 44100,
         "mp3_bitrate": 128,
+        # Stable, natural variation for pre-recorded dialogue (not real-time).
+        "temperature": float(os.environ.get("FISH_TTS_TEMPERATURE", "0.7")),
+        "top_p": float(os.environ.get("FISH_TTS_TOP_P", "0.7")),
     }).encode("utf-8")
     request = urllib.request.Request(
         "https://api.fish.audio/v1/tts",
@@ -87,16 +90,18 @@ def fish_tts(text: str, voice_id: str, api_key: str, out_file: str):
 
 
 def dialogue_pause(text: str, previous_speaker: str | None, speaker: str) -> float:
-    """Vary turn timing by punctuation and speaker changes."""
-    if previous_speaker and previous_speaker != speaker:
-        return 0.38 if re.search(r'[؟?!.…]$', text) else 0.28
-    if re.search(r'[؟?!]$', text):
-        return 0.34
-    if re.search(r'[.…]$', text):
-        return 0.48
+    """Use conversational turn-taking pauses instead of uniform gaps."""
+    length = len(text.strip())
+    changed_speaker = previous_speaker is not None and previous_speaker != speaker
+    if re.search(r'[؟?]$', text):
+        return 0.62 if changed_speaker else 0.42
+    if re.search(r'[.!…]$', text):
+        return 0.54 if changed_speaker else 0.38
     if re.search(r'[،؛,]$', text):
-        return 0.20
-    return 0.26
+        return 0.30 if length > 45 else 0.22
+    if changed_speaker:
+        return 0.48 if length > 55 else 0.36
+    return 0.24 if length > 55 else 0.18
 
 
 def build_natural_session(items, api_key, voice_mapping, work_dir, output_file, manifest_path, on_progress=None):
@@ -106,9 +111,9 @@ def build_natural_session(items, api_key, voice_mapping, work_dir, output_file, 
     silence_laugh = os.path.join(work_dir, "pause_laugh.mp3")
     silence_scene = os.path.join(work_dir, "pause_scene.mp3")
     scene_transition = os.path.join(work_dir, "scene_transition.mp3")
-    generate_silence(0.28, silence_dialogue)
-    generate_silence(0.72, silence_laugh)
-    generate_silence(1.15, silence_scene)
+    generate_silence(0.18, silence_dialogue)
+    generate_silence(0.82, silence_laugh)
+    generate_silence(1.25, silence_scene)
     has_scenes = any(item["type"] == "scene" for item in items)
     if has_scenes:
         generate_scene_transition(scene_transition)
@@ -146,6 +151,8 @@ def build_natural_session(items, api_key, voice_mapping, work_dir, output_file, 
             playlist.append(segment_file)
 
         if item.get("has_laugh"):
+            # Keep a breathing beat after laughter; the provider still handles
+            # the actual laugh marker in the spoken text.
             playlist.append(silence_laugh)
         elif item["text"]:
             pause_duration = dialogue_pause(item["text"], previous_speaker, speaker)

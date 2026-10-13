@@ -1,11 +1,8 @@
 import os
 import re
-import json
 import uuid
 import logging
 import threading
-import urllib.error
-import urllib.request
 from pathlib import Path
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,36 +41,6 @@ def get_api_key():
         raise ValueError("يرجى ضبط FISH_API_KEY في إعدادات الخدمة")
     return key
 
-def fetch_account_voices(api_key):
-    """Return current account models so removed references aren't offered in the UI."""
-    request = urllib.request.Request(
-        "https://api.fish.audio/model",
-        headers={"Authorization": f"Bearer {api_key}"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError) as error:
-        logger.warning("Unable to refresh Fish Audio voice library: %s", error)
-        return None
-
-    entries = payload.get("items", payload) if isinstance(payload, dict) else payload
-    if not isinstance(entries, list):
-        return None
-    current = []
-    for item in entries:
-        if not isinstance(item, dict):
-            continue
-        voice_id = item.get("_id") or item.get("id")
-        if not voice_id:
-            continue
-        current.append({
-            "id": voice_id,
-            "name": item.get("title") or item.get("name") or str(voice_id),
-            "region": "fish",
-        })
-    return current or None
-
 class GenerateRequest(BaseModel):
     text: str
     voiceMapping: dict = {}
@@ -82,7 +49,7 @@ class GenerateRequest(BaseModel):
 def get_voices():
     # Keep the UI limited to curated Arabic voices; Fish account libraries may
     # contain models in unrelated languages without reliable language metadata.
-    curated = [
+    return [
         {"id": "17f2143d748a4d368cb8a7e624cb1506", "name": "يمني محكي — حيوي ومعبر", "region": "yemen"},
         {"id": "06645dd394b3405fa33c07a818f40e57", "name": "خليجي — هادئ ورزين", "region": "gulf"},
         {"id": "e3b13d8bc61a45c19ee4ba2e08fb5208", "name": "سعودي — شبابي وحواري", "region": "saudi"},
@@ -97,13 +64,6 @@ def get_voices():
         {"id": "10c5c2a37a284a81bb0cf3c53955d795", "name": "سعودي — واضح وهادئ", "region": "saudi"},
         {"id": "fb6c06c8cbf94dd3afb11720d3d87007", "name": "عراقي — نشيط ومعبر", "region": "iraq"},
     ]
-    try:
-        current = fetch_account_voices(get_api_key())
-        if current:
-            return current
-    except ValueError:
-        pass
-    return curated
 
 def clean_speech_text(text: str) -> tuple[str, bool]:
     has_laugh = bool(re.search(r'[😂🤣]|هههه+|هاهاها', text))
