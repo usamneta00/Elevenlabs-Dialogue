@@ -1,6 +1,9 @@
 import os
 import re
+import json
 import subprocess
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 
@@ -42,18 +45,45 @@ def generate_silence(duration: float, out_file: str):
         out_file
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
-def generate_scene_transition(client, out_file: str):
-    """Generate a quiet natural outdoor café ambience cue with ElevenLabs SFX."""
-    stream = client.text_to_sound_effects.convert(
-        text="Brief subtle outdoor Yemeni street café ambience, distant soft traffic and quiet tea-house murmur, no intelligible speech, no music, natural recording",
-        duration_seconds=1.8,
-        prompt_influence=0.35,
-        model_id="eleven_text_to_sound_v2",
-        output_format="mp3_44100_128",
+def generate_scene_transition(out_file: str):
+    """Create a short local transition chime without an external SFX provider."""
+    subprocess.run([
+        "ffmpeg", "-y", "-f", "lavfi", "-i",
+        "sine=frequency=587.33:duration=0.35",
+        "-filter_complex", "afade=t=in:st=0:d=0.03,afade=t=out:st=0.15:d=0.2",
+        "-q:a", "2", "-acodec", "libmp3lame", out_file,
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def fish_tts(text: str, voice_id: str, api_key: str, out_file: str):
+    payload = json.dumps({
+        "text": text,
+        "reference_id": voice_id,
+        "format": "mp3",
+        "sample_rate": 44100,
+        "mp3_bitrate": 128,
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        "https://api.fish.audio/v1/tts",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "model": os.environ.get("FISH_TTS_MODEL", "s2.1-pro-free"),
+        },
+        method="POST",
     )
-    with open(out_file, "wb") as audio_file:
-        for chunk in stream:
-            audio_file.write(chunk)
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            with open(out_file, "wb") as audio_file:
+                audio_file.write(response.read())
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")
+        try:
+            detail = json.loads(detail).get("message", detail)
+        except (ValueError, AttributeError):
+            pass
+        raise RuntimeError(f"Fish Audio API ({error.code}): {detail}") from error
 
 
 def dialogue_pause(text: str, previous_speaker: str | None, speaker: str) -> float:
@@ -69,7 +99,7 @@ def dialogue_pause(text: str, previous_speaker: str | None, speaker: str) -> flo
     return 0.26
 
 
-def build_natural_session(items, client, voice_mapping, work_dir, output_file, manifest_path, on_progress=None):
+def build_natural_session(items, api_key, voice_mapping, work_dir, output_file, manifest_path, on_progress=None):
     """Render page-provided dialogue, natural pauses, and scene cues as one file."""
     os.makedirs(work_dir, exist_ok=True)
     silence_dialogue = os.path.join(work_dir, "pause_dialogue.mp3")
@@ -81,9 +111,9 @@ def build_natural_session(items, client, voice_mapping, work_dir, output_file, m
     generate_silence(1.15, silence_scene)
     has_scenes = any(item["type"] == "scene" for item in items)
     if has_scenes:
-        generate_scene_transition(client, scene_transition)
+        generate_scene_transition(scene_transition)
 
-    default_voice = "pNGUEZc2WLum9bjP611g"
+    default_voice = os.environ.get("FISH_DEFAULT_VOICE_ID", "")
     playlist = []
     previous_speaker = None
 
@@ -101,23 +131,10 @@ def build_natural_session(items, client, voice_mapping, work_dir, output_file, m
         speaker = item["speaker"]
         if item["text"]:
             segment_file = os.path.join(work_dir, f"seg_{index:03d}.mp3")
-            stream = client.text_to_speech.convert(
-                voice_id=voice_mapping.get(speaker, default_voice),
-                text=item["text"],
-                # v3 understands inline [laughs] audio tags, so each laugh is
-                # produced in the selected character's voice in the same take.
-                model_id="eleven_v3",
-                output_format="mp3_44100_128",
-                voice_settings={
-                    "stability": 0.42,
-                    "similarity_boost": 0.78,
-                    "style": 0.28,
-                    "use_speaker_boost": True,
-                },
-            )
-            with open(segment_file, "wb") as audio_file:
-                for chunk in stream:
-                    audio_file.write(chunk)
+            voice_id = voice_mapping.get(speaker) or default_voice
+            if not voice_id:
+                raise ValueError("أدخل معرف صوت Fish Audio لكل متحدث أو اضبط FISH_DEFAULT_VOICE_ID")
+            fish_tts(item["text"], voice_id, api_key, segment_file)
             playlist.append(segment_file)
 
         if item.get("has_laugh"):

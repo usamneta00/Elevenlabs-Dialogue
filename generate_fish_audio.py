@@ -1,46 +1,34 @@
 import os
 import re
-import time
 import subprocess
 from pathlib import Path
-from elevenlabs.client import ElevenLabs
+from assemble_natural_session import fish_tts
 
-# Actual ElevenLabs Voice IDs with high Arabic realism:
-# Professional native Arabic voices in your library:
-# - Ziyad (Natural Saudi Arabic)
-# - Fahad (Saudi, Warm & Confident)
-# - Mamdooh Fg
-# - ABDULLAH ALMUDAWI
-# - Abdulrahman
-# + Adam / George for deep characters
-
-ELEVEN_VOICES = {
-    "أبو صقر": "pNGUEZc2WLum9bjP611g",  # Ziyad - Natural Arabic (وقور، رزين)
-    "مروان":   "KfYUTAF49N2CPU3iKuMi",  # Abdulrahman (حماسي، نبرة حادة وصريحة)
-    "سالم":    "rpGHcNQJvO8dFNNFNj1v",  # Fahad (هادئ، واثق، واقتصادي)
-    "نبيل":    "FyTdvEJCoWuIYfS3P1x0",  # ABDULLAH ALMUDAWI (جدي وعسكري)
-    "فتحي":    "Rc0jb4oaYXOM4EVr0Jij",  # Mamdooh Fg (خفيف دم ومرح)
-    "الجميع":  "pNGUEZc2WLum9bjP611g"
+FISH_VOICES = {
+    "أبو صقر": "FISH_VOICE_ABU_SAQR",
+    "مروان": "FISH_VOICE_MARWAN",
+    "سالم": "FISH_VOICE_SALEM",
+    "نبيل": "FISH_VOICE_NABIL",
+    "فتحي": "FISH_VOICE_FATHI",
+    "الجميع": "FISH_DEFAULT_VOICE_ID",
 }
 
-FALLBACK_VOICE_ID = "pNGUEZc2WLum9bjP611g"
-
 def load_api_key():
-    key = os.environ.get("ELEVENLABS_API_KEY")
+    key = os.environ.get("FISH_API_KEY")
     if key:
         return key.strip()
     env_file = Path(".env")
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
-            if line.startswith("ELEVENLABS_API_KEY="):
+            if line.lstrip("\ufeff").strip().startswith("FISH_API_KEY="):
                 return line.split("=", 1)[1].strip()
     return None
 
-def get_client():
+def get_api_key():
     api_key = load_api_key()
     if not api_key:
-        raise ValueError("يرجى وضع ELEVENLABS_API_KEY في ملف .env")
-    return ElevenLabs(api_key=api_key)
+        raise ValueError("يرجى وضع FISH_API_KEY في ملف .env")
+    return api_key
 
 def clean_speech_text(text: str) -> tuple[str, bool]:
     has_laugh = bool(re.search(r'[😂🤣]|هههه+|هاهاها', text))
@@ -98,13 +86,13 @@ def generate_scene_chime(out_file: str):
         out_file
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
-def render_with_elevenlabs(script_file: str, output_mp3: str = "elevenlabs_yemeni_session.mp3"):
-    client = get_client()
+def render_with_fish_audio(script_file: str, output_mp3: str = "fish_audio_yemeni_session.mp3"):
+    api_key = get_api_key()
     with open(script_file, "r", encoding="utf-8") as f:
         content = f.read()
 
     items = parse_dialogue(content)
-    temp_dir = "temp_eleven_render"
+    temp_dir = "temp_fish_render"
     os.makedirs(temp_dir, exist_ok=True)
 
     silence_normal = os.path.join(temp_dir, "pause_normal.mp3")
@@ -119,7 +107,7 @@ def render_with_elevenlabs(script_file: str, output_mp3: str = "elevenlabs_yemen
 
     playlist = []
     total = len(items)
-    print(f"ElevenLabs Total Dialogue Items: {total}")
+    print(f"Fish Audio Total Dialogue Items: {total}")
 
     for i, it in enumerate(items):
         if it["type"] == "scene":
@@ -129,23 +117,14 @@ def render_with_elevenlabs(script_file: str, output_mp3: str = "elevenlabs_yemen
             continue
 
         spk = it["speaker"]
-        voice_id = ELEVEN_VOICES.get(spk, FALLBACK_VOICE_ID)
+        voice_id = os.environ.get(FISH_VOICES.get(spk, ""), os.environ.get("FISH_DEFAULT_VOICE_ID", ""))
+        if not voice_id:
+            raise ValueError(f"أدخل معرف صوت Fish Audio في متغير بيئة مناسب للمتحدث {spk}")
         text = it["text"]
         print(f"[{i+1}/{total}] صوت {spk} (Voice ID: {voice_id[:6]}...): {text[:35]}...")
 
-        seg_file = os.path.join(temp_dir, f"eleven_{i:03d}.mp3")
-        
-        # Call ElevenLabs Multilingual V2 (Human realistic)
-        audio_stream = client.text_to_speech.convert(
-            voice_id=voice_id,
-            text=text,
-            model_id="eleven_multilingual_v2",
-            output_format="mp3_44100_128"
-        )
-        
-        with open(seg_file, "wb") as f_out:
-            for chunk in audio_stream:
-                f_out.write(chunk)
+        seg_file = os.path.join(temp_dir, f"fish_{i:03d}.mp3")
+        fish_tts(text, voice_id, api_key, seg_file)
                 
         playlist.append(seg_file)
         if it.get("has_laugh"):
@@ -154,7 +133,7 @@ def render_with_elevenlabs(script_file: str, output_mp3: str = "elevenlabs_yemen
             playlist.append(silence_normal)
 
     # Concat
-    concat_manifest = os.path.join(temp_dir, "eleven_manifest.txt")
+    concat_manifest = os.path.join(temp_dir, "fish_manifest.txt")
     with open(concat_manifest, "w", encoding="utf-8") as f:
         for p in playlist:
             f.write(f"file '{Path(p).resolve().as_posix()}'\n")
@@ -169,4 +148,4 @@ def render_with_elevenlabs(script_file: str, output_mp3: str = "elevenlabs_yemen
     return output_mp3
 
 if __name__ == "__main__":
-    render_with_elevenlabs("session_script.txt")
+    render_with_fish_audio("session_script.txt")

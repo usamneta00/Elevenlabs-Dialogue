@@ -9,10 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from elevenlabs.client import ElevenLabs
 from assemble_natural_session import build_natural_session
 
-app = FastAPI(title="ElevenLabs Dialogue Studio")
+app = FastAPI(title="Fish Audio Dialogue Studio")
 logger = logging.getLogger(__name__)
 generation_jobs = {}
 generation_jobs_lock = threading.Lock()
@@ -26,42 +25,45 @@ app.add_middleware(
 )
 
 def load_api_key():
-    key = os.environ.get("ELEVENLABS_API_KEY")
+    key = os.environ.get("FISH_API_KEY")
     if key:
         return key.strip()
     env_file = Path(".env")
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
-            if line.startswith("ELEVENLABS_API_KEY="):
+            if line.lstrip("\ufeff").strip().startswith("FISH_API_KEY="):
                 return line.split("=", 1)[1].strip()
     return ""
 
-def get_client(custom_key: str = None):
-    key = custom_key or load_api_key()
+def get_api_key():
+    key = load_api_key()
     if not key:
-        raise ValueError("يرجى توفير مفتاح ELEVENLABS_API_KEY")
-    return ElevenLabs(api_key=key)
+        raise ValueError("يرجى ضبط FISH_API_KEY في إعدادات الخدمة")
+    return key
 
 class GenerateRequest(BaseModel):
     text: str
-    apiKey: str = ""
     voiceMapping: dict = {}
 
 @app.get("/api/voices")
-def get_voices(apiKey: str = ""):
-    try:
-        client = get_client(apiKey if apiKey.strip() else None)
-        v_list = client.voices.get_all()
-        return [
-            {
-                "id": v.voice_id,
-                "name": v.name,
-                "category": v.category
-            }
-            for v in v_list.voices
-        ]
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+def get_voices():
+    # Keep the UI limited to curated Arabic voices; Fish account libraries may
+    # contain models in unrelated languages without reliable language metadata.
+    return [
+        {"id": "17f2143d748a4d368cb8a7e624cb1506", "name": "يمني محكي — حيوي ومعبر", "region": "yemen"},
+        {"id": "06645dd394b3405fa33c07a818f40e57", "name": "خليجي — هادئ ورزين", "region": "gulf"},
+        {"id": "e3b13d8bc61a45c19ee4ba2e08fb5208", "name": "سعودي — شبابي وحواري", "region": "saudi"},
+        {"id": "962fe3fab7904c18ba0a250f9b34f53a", "name": "مصري — حيوي ومرح", "region": "egypt"},
+        {"id": "ed023b716c7d411e8696bf6e3a4dada0", "name": "عراقي — حواري وودود", "region": "iraq"},
+        {"id": "bc65cad6731c4c13a2dd21f02cfe6ac6", "name": "شامي — شبابي وحيوي", "region": "levant"},
+        {"id": "8ad316c0e3aa4810a471e1bca511cd32", "name": "مغربي — ودود وحيوي", "region": "morocco"},
+        {"id": "49a4c4dddbda43ca97227502160f0f25", "name": "مصري — عميق وحازم", "region": "egypt"},
+        {"id": "9cd8bf9f5933408db8ca0f3df941a6cb", "name": "شاب يمني — واضح ونشيط", "region": "yemen"},
+        {"id": "0459ad579a554aad9391a84d8da05ead", "name": "شاب يمني — حواري وودود", "region": "yemen"},
+        {"id": "b8c0ca1c883f4b0a847c7b7746601e6d", "name": "يمني — جاد ورزين", "region": "yemen"},
+        {"id": "10c5c2a37a284a81bb0cf3c53955d795", "name": "سعودي — واضح وهادئ", "region": "saudi"},
+        {"id": "fb6c06c8cbf94dd3afb11720d3d87007", "name": "عراقي — نشيط ومعبر", "region": "iraq"},
+    ]
 
 def clean_speech_text(text: str) -> tuple[str, bool]:
     has_laugh = bool(re.search(r'[😂🤣]|هههه+|هاهاها', text))
@@ -106,7 +108,7 @@ def parse_dialogue(raw_text: str):
 @app.post("/api/generate")
 def generate_dialogue(req: GenerateRequest, background_tasks: BackgroundTasks):
     try:
-        client = get_client(req.apiKey if req.apiKey.strip() else None)
+        api_key = get_api_key()
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -135,7 +137,7 @@ def generate_dialogue(req: GenerateRequest, background_tasks: BackgroundTasks):
         job_id,
         req,
         items,
-        client,
+        api_key,
         work_dir,
         final_output,
         manifest_file,
@@ -150,7 +152,7 @@ def generate_dialogue(req: GenerateRequest, background_tasks: BackgroundTasks):
     }
 
 
-def run_generation_job(job_id, req, items, client, work_dir, final_output, manifest_file, out_mp3_name):
+def run_generation_job(job_id, req, items, api_key, work_dir, final_output, manifest_file, out_mp3_name):
     def update_progress(completed, total):
         with generation_jobs_lock:
             job = generation_jobs.get(job_id)
@@ -164,7 +166,7 @@ def run_generation_job(job_id, req, items, client, work_dir, final_output, manif
     try:
         build_natural_session(
             items=items,
-            client=client,
+            api_key=api_key,
             voice_mapping=req.voiceMapping,
             work_dir=work_dir,
             output_file=final_output,
@@ -183,7 +185,7 @@ def run_generation_job(job_id, req, items, client, work_dir, final_output, manif
         error_detail = error_body.get("detail") if isinstance(error_body, dict) else None
         message = error_detail.get("message") if isinstance(error_detail, dict) else None
         message = message or (error_detail if isinstance(error_detail, str) else None)
-        message = message or "تعذر توليد الصوت. تحقق من إعدادات ElevenLabs ثم أعد المحاولة."
+        message = message or "تعذر توليد الصوت. تحقق من إعدادات Fish Audio ثم أعد المحاولة."
         logger.exception("Audio generation job %s failed", job_id)
         with generation_jobs_lock:
             generation_jobs[job_id].update({"status": "failed", "detail": message})

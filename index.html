@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>استوديو توليد الحوار الصوتي البشري | ElevenLabs AI</title>
+  <title>استوديو توليد الحوار الصوتي البشري | Fish Audio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -278,7 +278,7 @@
   <div class="container">
     <header>
       <div class="header-titles">
-        <span class="badge">ElevenLabs Multilingual V2 · واقعية بشرية 100%</span>
+        <span class="badge">Fish Audio · توليد حوار صوتي بالذكاء الاصطناعي</span>
         <h1 style="margin-top: 8px;">استوديو توليد الحوار والسيناريو الصوتي</h1>
         <p>ألصق أي نص أو سيناريو، واختر الصوت البشري المناسب لكل متحدث، واضغط زر التوليد لإنتاج ملف صوتي واقعي مباشر.</p>
       </div>
@@ -298,7 +298,7 @@
         </div>
         <div style="display: flex; gap: 8px;">
           <span class="meta-tag" id="playerDuration">المدة: 14:46 دقيقة</span>
-          <span class="meta-tag" style="color: var(--accent-green); border-color: var(--accent-green);">جودة استوديو ElevenLabs</span>
+          <span class="meta-tag" style="color: var(--accent-green); border-color: var(--accent-green);">Fish Audio</span>
         </div>
       </div>
       <audio id="mainAudio" controls preload="metadata"></audio>
@@ -317,14 +317,14 @@
         
         <div class="btn-row">
           <button id="btnGenerate" style="background: #10b981; color: #fff;">
-            ⚡ توليد الملف الصوتي الآن (ElevenLabs)
+            ⚡ توليد الملف الصوتي الآن (Fish Audio)
           </button>
           <button id="btnLoadSample" class="secondary">استعادة نص الجلسة اليمنية</button>
         </div>
         
         <div class="status-box">
           <div class="spinner" id="spinner"></div>
-      <span id="statusMessage">جاهز لتوليد الحوار بأصوات ElevenLabs مع الضحك ضمن أداء كل متحدث.</span>
+      <span id="statusMessage">تم تجهيز أصوات عربية فقط بلهجات متعددة للشخصيات تلقائياً.</span>
         </div>
       </section>
 
@@ -334,7 +334,7 @@
           <span>تخصيص الأصوات البشرية</span>
           <button id="btnRefreshVoices" class="secondary" style="padding: 4px 10px; font-size: 11px;">تحديث الأصوات</button>
         </div>
-        <p class="hint">اختر من مكتبة أصوات حسابك في ElevenLabs الصوت المناسب لكل شخصية مكتشفة في النص.</p>
+        <p class="hint">كل الخيارات أصوات عربية بلهجات يمنية وخليجية وسعودية ومصرية وعراقية وشامية ومغربية. يوزّعها التطبيق تلقائياً، ويمكنك تغييرها من القائمة.</p>
 
         <div class="characters-grid" id="charactersList">
           <div class="hint">اكتب أو ألصق نصاً للتعرف على الشخصيات وتخصيص أصواتها...</div>
@@ -345,23 +345,29 @@
 
   <script>
     const el = id => document.getElementById(id);
+    // Curated Arabic-only Fish Audio voices across several Arab dialects.
     let availableVoices = [
-      { id: "pNGUEZc2WLum9bjP611g", name: "Ziyad - Natural Arabic (صوت وقور ورزين)" },
-      { id: "rpGHcNQJvO8dFNNFNj1v", name: "Fahad - Saudi, Warm & Confident (هادئ وواثق)" },
-      { id: "KfYUTAF49N2CPU3iKuMi", name: "Abdulrahman - Energetic (سريع وحماسي)" },
-      { id: "FyTdvEJCoWuIYfS3P1x0", name: "ABDULLAH ALMUDAWI (جدي وحاسم)" },
-      { id: "Rc0jb4oaYXOM4EVr0Jij", name: "Mamdooh Fg (مرح وخفيف دم)" },
-      { id: "pNInz6obpgDQGcFmaJgB", name: "Adam - Deep Male" },
-      { id: "JBFqnCBsd6RMkjVDRZzb", name: "George - Warm Storyteller" }
+      { id: "17f2143d748a4d368cb8a7e624cb1506", name: "يمني محكي — حيوي ومعبر", region: "yemen" },
+      { id: "06645dd394b3405fa33c07a818f40e57", name: "خليجي — هادئ ورزين", region: "gulf" },
+      { id: "e3b13d8bc61a45c19ee4ba2e08fb5208", name: "سعودي — شبابي وحواري", region: "saudi" },
+      { id: "962fe3fab7904c18ba0a250f9b34f53a", name: "مصري — حيوي ومرح", region: "egypt" },
+      { id: "ed023b716c7d411e8696bf6e3a4dada0", name: "عراقي — حواري وودود", region: "iraq" },
+      { id: "bc65cad6731c4c13a2dd21f02cfe6ac6", name: "شامي — شبابي وحيوي", region: "levant" },
+      { id: "8ad316c0e3aa4810a471e1bca511cd32", name: "مغربي — ودود وحيوي", region: "morocco" },
+      { id: "49a4c4dddbda43ca97227502160f0f25", name: "مصري — عميق وحازم", region: "egypt" },
+      { id: "9cd8bf9f5933408db8ca0f3df941a6cb", name: "شاب يمني — واضح ونشيط", region: "yemen" },
+      { id: "0459ad579a554aad9391a84d8da05ead", name: "شاب يمني — حواري وودود", region: "yemen" },
+      { id: "b8c0ca1c883f4b0a847c7b7746601e6d", name: "يمني — جاد ورزين", region: "yemen" },
+      { id: "10c5c2a37a284a81bb0cf3c53955d795", name: "سعودي — واضح وهادئ", region: "saudi" },
+      { id: "fb6c06c8cbf94dd3afb11720d3d87007", name: "عراقي — نشيط ومعبر", region: "iraq" }
     ];
-
-    const defaultAssignments = {
-      "أبو صقر": "pNGUEZc2WLum9bjP611g",
-      "سالم": "rpGHcNQJvO8dFNNFNj1v",
-      "مروان": "KfYUTAF49N2CPU3iKuMi",
-      "نبيل": "FyTdvEJCoWuIYfS3P1x0",
-      "فتحي": "Rc0jb4oaYXOM4EVr0Jij",
-      "الجميع": "pNGUEZc2WLum9bjP611g"
+    const characterVoices = {
+      "أبو صقر": "17f2143d748a4d368cb8a7e624cb1506",
+      "مروان": "e3b13d8bc61a45c19ee4ba2e08fb5208",
+      "سالم": "06645dd394b3405fa33c07a818f40e57",
+      "نبيل": "49a4c4dddbda43ca97227502160f0f25",
+      "فتحي": "ed023b716c7d411e8696bf6e3a4dada0",
+      "الجميع": "17f2143d748a4d368cb8a7e624cb1506"
     };
 
     let detectedSpeakers = [];
@@ -404,18 +410,26 @@
         return;
       }
       container.innerHTML = '';
+      const usedVoices = new Set();
+      const usedRegions = new Set();
       detectedSpeakers.forEach((spk, idx) => {
         const item = document.createElement('div');
         item.className = 'character-item';
+        const preferred = characterVoices[spk];
+        const preferredVoice = availableVoices.find(v => v.id === preferred && !usedVoices.has(v.id) && !usedRegions.has(v.region));
+        const nextUnusedVoice = availableVoices.find(v => !usedVoices.has(v.id) && !usedRegions.has(v.region));
+        const nextVoice = availableVoices.find(v => !usedVoices.has(v.id));
+        const assigned = preferredVoice || nextUnusedVoice || nextVoice || availableVoices[idx % availableVoices.length];
+        const assignedVoice = assigned.id;
+        usedVoices.add(assignedVoice);
+        usedRegions.add(assigned.region);
         
-        let assigned = defaultAssignments[spk] || availableVoices[idx % availableVoices.length]?.id;
-
         item.innerHTML = `
           <div class="char-header">
             <span class="char-name">👤 ${spk}</span>
           </div>
-          <select data-speaker="${spk}">
-            ${availableVoices.map(v => `<option value="${v.id}" ${v.id === assigned ? 'selected' : ''}>${v.name}</option>`).join('')}
+          <select data-speaker="${spk}" style="background:#1e293b;border:1px solid #334155;color:#f8fafc;padding:8px 12px;border-radius:8px;font-family:inherit;font-size:13px;width:100%;">
+            ${availableVoices.map(v => `<option value="${v.id}" ${v.id === assignedVoice ? 'selected' : ''}>${v.name}</option>`).join('')}
           </select>
         `;
         container.appendChild(item);
@@ -432,14 +446,14 @@
 
       // Collect voice mapping
       const mapping = {};
-      document.querySelectorAll('#charactersList select').forEach(sel => {
+      document.querySelectorAll('#charactersList select[data-speaker]').forEach(sel => {
         mapping[sel.dataset.speaker] = sel.value;
       });
 
       // UI state
       el('btnGenerate').disabled = true;
       el('spinner').style.display = 'inline-block';
-      el('statusMessage').textContent = 'جاري توليد الحوار والضحك ضمن صوت كل متحدث عبر ElevenLabs... قد يستغرق وقتاً أطول للنصوص الطويلة.';
+      el('statusMessage').textContent = 'جاري توليد الحوار عبر Fish Audio... قد يستغرق وقتاً أطول للنصوص الطويلة.';
 
       try {
         const response = await fetch('/api/generate', {

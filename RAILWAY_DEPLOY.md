@@ -4,16 +4,19 @@
 
 - `railway.json` يحدد أمر التشغيل وفحص `/health`.
 - `railpack.json` يثبت `ffmpeg` المطلوب لدمج المقاطع الصوتية.
-- `requirements.txt` يثبت FastAPI وUvicorn ومكتبة ElevenLabs.
+- `requirements.txt` يثبت FastAPI وUvicorn.
 - `.railwayignore` يمنع رفع مفتاح `.env` والملفات المؤقتة.
 
 ## النشر
 
 1. ارفع ملفات المشروع إلى مستودع GitHub خاص، أو ثبّت Railway CLI وسجّل الدخول.
 2. في Railway أنشئ مشروعًا وخدمة من مستودع GitHub، أو من مجلد المشروع عبر CLI.
-3. أضف متغير الخدمة `ELEVENLABS_API_KEY` من صفحة Variables في Railway. لا ترفع `.env` إلى GitHub.
-4. انشر الخدمة، ثم أنشئ Public Domain من إعدادات Networking.
-5. تحقق من أن `/health` يعيد `{"status":"ok"}` ثم افتح عنوان الخدمة.
+3. أضف متغير الخدمة `FISH_API_KEY` من صفحة Variables في Railway. لا ترفع `.env` إلى GitHub.
+4. (اختياري) أضف `FISH_DEFAULT_VOICE_ID` كمعرف صوت افتراضي. يستخدم التطبيق `s2.1-pro-free` المجاني افتراضياً؛ غيّر `FISH_TTS_MODEL` فقط إذا أردت موديلًا آخر.
+5. انشر الخدمة، ثم أنشئ Public Domain من إعدادات Networking.
+6. تحقق من أن `/health` يعيد `{"status":"ok"}` ثم افتح عنوان الخدمة.
+
+تُحمّل الصفحة أصوات الحساب من Fish Audio عند توفر واجهة المكتبة. إذا لم تظهر القائمة، الصق معرف الصوت (Model ID) من رابط الصوت في Fish Audio لكل متحدث.
 
 ## ملاحظة عن الملفات الصوتية
 
