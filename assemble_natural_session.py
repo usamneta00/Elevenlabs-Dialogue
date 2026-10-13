@@ -104,6 +104,25 @@ def dialogue_pause(text: str, previous_speaker: str | None, speaker: str) -> flo
     return 0.24 if length > 55 else 0.18
 
 
+def fish_tts_with_fallback(text: str, voice_id: str, api_key: str, out_file: str, fallback_voice_ids=()):
+    """Retry stale references with other already-assigned cast voices."""
+    candidates = [voice_id]
+    candidates.extend(candidate for candidate in fallback_voice_ids if candidate and candidate not in candidates)
+    last_error = None
+    for candidate in candidates:
+        try:
+            fish_tts(text, candidate, api_key, out_file)
+            return candidate
+        except RuntimeError as error:
+            last_error = error
+            if "reference not found" not in str(error).lower():
+                raise
+    attempted = ", ".join(candidates)
+    raise RuntimeError(
+        f"تعذرت الأصوات المحددة والبديلة ({attempted}). آخر رد من Fish Audio: {last_error}"
+    ) from last_error
+
+
 def build_natural_session(items, api_key, voice_mapping, work_dir, output_file, manifest_path, on_progress=None):
     """Render page-provided dialogue, natural pauses, and scene cues as one file."""
     os.makedirs(work_dir, exist_ok=True)
@@ -140,7 +159,13 @@ def build_natural_session(items, api_key, voice_mapping, work_dir, output_file, 
             if not voice_id:
                 raise ValueError("أدخل معرف صوت Fish Audio لكل متحدث أو اضبط FISH_DEFAULT_VOICE_ID")
             try:
-                fish_tts(item["text"], voice_id, api_key, segment_file)
+                alternate_voices = [
+                    mapped_voice for mapped_speaker, mapped_voice in voice_mapping.items()
+                    if mapped_speaker != speaker and mapped_voice
+                ]
+                voice_id = fish_tts_with_fallback(
+                    item["text"], voice_id, api_key, segment_file, alternate_voices
+                )
             except RuntimeError as error:
                 # Keep the provider's actionable response and identify the exact
                 # speaker/segment so stale Fish Audio references can be replaced.
