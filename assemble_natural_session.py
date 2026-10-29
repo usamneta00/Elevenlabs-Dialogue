@@ -23,13 +23,29 @@ def assemble_playlist(playlist, output_file, manifest_path, static_copies=()):
 
     output = Path(output_file)
     output.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run([
+    command = [
         "ffmpeg", "-y", "-f", "concat", "-safe", "0",
         "-i", str(manifest.resolve()), "-vn",
         "-af", "highpass=f=75,lowpass=f=12000,equalizer=f=2200:t=q:w=1.1:g=1.5,volume=1.15",
-        "-c:a", "libmp3lame",
-        "-b:a", "192k", "-ar", "44100", "-ac", "2", str(output)
-    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        "-c:a", "libmp3lame", "-b:a", "192k", "-ar", "44100", "-ac", "2", str(output)
+    ]
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    except subprocess.CalledProcessError as error:
+        # Some hosted ffmpeg builds abort while filtering concat-demuxer input.
+        # Retry the same playlist with stream copy so a filter failure does not
+        # discard otherwise successfully generated dialogue.
+        if output.exists():
+            output.unlink()
+        fallback = [
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+            "-i", str(manifest.resolve()), "-vn", "-c:a", "copy", str(output)
+        ]
+        try:
+            subprocess.run(fallback, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        except subprocess.CalledProcessError as fallback_error:
+            details = fallback_error.stderr or error.stderr or str(fallback_error)
+            raise RuntimeError(f"تعذر دمج المقاطع الصوتية باستخدام ffmpeg: {details[-2000:]}") from fallback_error
 
     for copy_to in static_copies:
         target = Path(copy_to)
