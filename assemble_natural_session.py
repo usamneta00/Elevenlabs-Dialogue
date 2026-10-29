@@ -26,7 +26,7 @@ def assemble_playlist(playlist, output_file, manifest_path, static_copies=()):
     subprocess.run([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0",
         "-i", str(manifest.resolve()), "-vn",
-        "-af", "highpass=f=75,lowpass=f=12000,equalizer=f=2200:t=q:w=1.1:g=1.5,loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-af", "highpass=f=75,lowpass=f=12000,equalizer=f=2200:t=q:w=1.1:g=1.5,volume=1.15",
         "-c:a", "libmp3lame",
         "-b:a", "192k", "-ar", "44100", "-ac", "2", str(output)
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
