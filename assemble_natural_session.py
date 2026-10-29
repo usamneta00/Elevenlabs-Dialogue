@@ -25,7 +25,9 @@ def assemble_playlist(playlist, output_file, manifest_path, static_copies=()):
     output.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-        "-i", str(manifest.resolve()), "-vn", "-c:a", "libmp3lame",
+        "-i", str(manifest.resolve()), "-vn",
+        "-af", "highpass=f=75,lowpass=f=12000,equalizer=f=2200:t=q:w=1.1:g=1.5,loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-c:a", "libmp3lame",
         "-b:a", "192k", "-ar", "44100", "-ac", "2", str(output)
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
 
@@ -64,8 +66,8 @@ def fish_tts(text: str, voice_id: str, api_key: str, out_file: str):
         "sample_rate": 44100,
         "mp3_bitrate": 128,
         # Stable, natural variation for pre-recorded dialogue (not real-time).
-        "temperature": float(os.environ.get("FISH_TTS_TEMPERATURE", "0.7")),
-        "top_p": float(os.environ.get("FISH_TTS_TOP_P", "0.7")),
+        "temperature": float(os.environ.get("FISH_TTS_TEMPERATURE", "0.55")),
+        "top_p": float(os.environ.get("FISH_TTS_TOP_P", "0.75")),
     }).encode("utf-8")
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -106,14 +108,14 @@ def dialogue_pause(text: str, previous_speaker: str | None, speaker: str) -> flo
     length = len(text.strip())
     changed_speaker = previous_speaker is not None and previous_speaker != speaker
     if re.search(r'[؟?]$', text):
-        return 0.62 if changed_speaker else 0.42
+        return 0.72 if changed_speaker else 0.46
     if re.search(r'[.!…]$', text):
-        return 0.54 if changed_speaker else 0.38
+        return 0.62 if changed_speaker else 0.40
     if re.search(r'[،؛,]$', text):
-        return 0.30 if length > 45 else 0.22
+        return 0.34 if length > 45 else 0.24
     if changed_speaker:
-        return 0.48 if length > 55 else 0.36
-    return 0.24 if length > 55 else 0.18
+        return 0.58 if length > 55 else 0.42
+    return 0.26 if length > 55 else 0.20
 
 
 def fish_tts_with_fallback(text: str, voice_id: str, api_key: str, out_file: str, fallback_voice_ids=()):

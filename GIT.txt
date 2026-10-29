@@ -2,6 +2,7 @@ echo "# Elevenlabs-Dialogue" >> README.md
 git init
 git add .
 git commit -m "first commit"
+git push -u origin main
+
 git branch -M main
 git remote add origin https://github.com/usamneta00/Elevenlabs-Dialogue.git
-git push -u origin main
